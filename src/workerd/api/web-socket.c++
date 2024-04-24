@@ -910,7 +910,10 @@ kj::Promise<kj::Maybe<kj::Exception>> WebSocket::readLoop(
         KJ_ASSERT_NONNULL(farNative->state.tryGet<Accepted>()).ws.getIfNotHibernatable());
     auto& context = IoContext::current();
     while (true) {
-      auto message = co_await ws.receive();
+      // Override the default 1M here to avoid hanging devtools sessions caused by
+      // large between-workerd devtool contexts.
+      constexpr size_t limit = 10u << 20;
+      auto message = co_await ws.receive(limit);
 
       context.getLimitEnforcer().topUpActor();
       KJ_IF_SOME(a, context.getActor()) {
